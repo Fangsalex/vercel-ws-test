@@ -1,0 +1,114 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vercel WebSocket Test</title>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  max-width: 650px;
+  margin: 40px auto;
+  padding: 20px;
+}
+button, input {
+  padding: 10px;
+  margin: 5px 0;
+}
+input { width: 70%; }
+#log {
+  background: #f2f2f2;
+  padding: 15px;
+  min-height: 220px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+</style>
+</head>
+<body>
+<h2>Vercel WebSocket Test</h2>
+
+<p>状态：<strong id="status">未连接</strong></p>
+<p>连接时长：<span id="duration">0</span> 秒</p>
+
+<button onclick="connect()">建立连接</button>
+<button onclick="disconnect()">断开连接</button>
+
+<br>
+<input id="message" value="hello vercel">
+<button onclick="sendMessage()">发送消息</button>
+
+<h3>连接日志</h3>
+<div id="log"></div>
+
+<script>
+let socket;
+let startTime;
+let timer;
+
+const statusEl = document.getElementById("status");
+const logEl = document.getElementById("log");
+
+function log(message) {
+  logEl.textContent +=
+    new Date().toLocaleTimeString() + " " + message + "\n";
+}
+
+function connect() {
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    return;
+  }
+
+  const protocol =
+    location.protocol === "https:" ? "wss:" : "ws:";
+
+  const url = `${protocol}//${location.host}/api/ws`;
+
+  socket = new WebSocket(url);
+
+  socket.onopen = () => {
+    statusEl.textContent = "已连接";
+    startTime = Date.now();
+
+    log("WebSocket 连接成功");
+
+    clearInterval(timer);
+    timer = setInterval(() => {
+      document.getElementById("duration").textContent =
+        Math.floor((Date.now() - startTime) / 1000);
+    }, 1000);
+  };
+
+  socket.onmessage = (event) => {
+    log("收到消息：" + event.data);
+  };
+
+  socket.onerror = () => {
+    log("WebSocket 发生错误");
+  };
+
+  socket.onclose = (event) => {
+    statusEl.textContent = "已断开";
+    clearInterval(timer);
+    log(`连接关闭，code=${event.code}`);
+  };
+}
+
+function sendMessage() {
+  if (!socket || socket.readyState !== WebSocket.OPEN) {
+    log("请先建立连接");
+    return;
+  }
+
+  const message = document.getElementById("message").value;
+  socket.send(message);
+  log("已发送：" + message);
+}
+
+function disconnect() {
+  if (socket) socket.close();
+}
+</script>
+</body>
+</html>
